@@ -1,0 +1,241 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+import nodemailer from "nodemailer";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const db = require("../models");
+const Factura = db.facturas;
+
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+const QRCode = require("qrcode");
+
+// ======================
+// 🧾 GENERAR FACTURA
+// ======================
+export const generarFactura = async (req, res) => {
+  try {
+    const { cliente, habitacion, serviciosSeleccionados, total, pago } = req.body;
+
+    const numeroFactura = `FAC-${Date.now()}`;
+    const fechaEmision = new Date().toLocaleString();
+
+    // Crear carpeta /facturas si no existe
+    const facturasDir = path.join(__dirname, "../../facturas");
+    if (!fs.existsSync(facturasDir)) fs.mkdirSync(facturasDir, { recursive: true });
+
+    const facturaPath = path.join(facturasDir, `${numeroFactura}.pdf`);
+    const qrData = `https://hoteldw.com/checkin/${numeroFactura}`;
+    const qrImage = await QRCode.toDataURL(qrData);
+
+    // === PDF ===
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const writeStream = fs.createWriteStream(facturaPath);
+    doc.pipe(writeStream);
+
+    // Fondo
+    const gradient = doc.linearGradient(0, 0, 600, 800);
+    gradient.stop(0, "#ffffff").stop(1, "#e8e8f0");
+    doc.rect(0, 0, 600, 800).fill(gradient);
+
+    // Logo
+    const logoPath = path.join(__dirname, "../../public/assets/images/LosMolinos.jpeg");
+    if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 50, { width: 100 });
+
+    // Encabezado
+    doc
+      .fillColor("#0c2344")
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .text("HOTEL DW", 150, 55)
+      .fontSize(10)
+      .font("Helvetica")
+      .text("Tel: +502 5555-5555 | info@hoteldw.com", 150, 80)
+      .moveDown();
+
+    doc
+      .strokeColor("#d4af37")
+      .lineWidth(2)
+      .moveTo(50, 110)
+      .lineTo(550, 110)
+      .stroke();
+
+    // Datos factura
+    doc
+      .fillColor("#0c2344")
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text(`Factura No.: ${numeroFactura}`, 50, 130)
+      .text(`Fecha de emisión: ${fechaEmision}`, 50, 145)
+      .moveDown();
+
+    // Datos cliente
+    doc
+      .fillColor("#0c2344")
+      .fontSize(14)
+      .font("Helvetica-Bold")
+      .text("Datos del Cliente", 50, 180)
+      .font("Helvetica")
+      .fillColor("black")
+      .fontSize(11)
+      .moveDown(0.3)
+      .text(`Nombre: ${cliente?.nombre || ""} ${cliente?.apellido || ""}`)
+      .text(`DPI: ${cliente?.dpi || ""}`)
+      .text(`Teléfono: ${cliente?.telefono || ""}`)
+      .text(`Correo electrónico: ${cliente?.email || ""}`)
+      .moveDown();
+
+    // Detalle de reserva
+    doc
+      .fillColor("#0c2344")
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .text("Detalle de la Reserva", 50)
+      .font("Helvetica")
+      .fillColor("black")
+      .fontSize(11)
+      .moveDown(0.3)
+      .text(`Habitación: ${habitacion?.habitacion || ""}`)
+      .text(`Nivel: ${habitacion?.nivel || ""}`)
+      .text(`Precio base: Q ${habitacion?.precio || 0}`)
+      .moveDown();
+
+    // Servicios adicionales
+    doc
+      .fillColor("#0c2344")
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .text("Servicios Adicionales", 50)
+      .moveDown(0.5)
+      .font("Helvetica")
+      .fontSize(11)
+      .fillColor("black");
+
+    if (serviciosSeleccionados?.length > 0) {
+      serviciosSeleccionados.forEach((s) => {
+        doc.text(
+          `• ${s.nombre} — Q ${s.precioFinal || s.precio} ${
+            s.descuento ? `(${s.descuento}% desc.)` : ""
+          }`
+        );
+      });
+    } else {
+      doc.text("Sin servicios adicionales seleccionados.");
+    }
+
+    doc.moveDown();
+
+    // Totales
+    doc
+      .fillColor("#0c2344")
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text(`Método de pago: ${pago || "PayPal"}`, 50)
+      .text(`Total pagado: Q ${Number(total || 0).toFixed(2)}`)
+      .moveDown();
+
+    // QR
+    const qrX = 420;
+    const qrY = doc.y - 10;
+    doc.image(qrImage, qrX, qrY, { width: 100 });
+    doc
+      .fontSize(9)
+      .fillColor("#0c2344")
+      .text("Escanee para confirmar Check-in", qrX, qrY + 105, { width: 120 });
+
+    // Pie
+    doc
+      .moveDown(3)
+      .fontSize(10)
+      .fillColor("#d4af37")
+      .font("Helvetica-Oblique")
+      .text(
+        "Gracias por su preferencia. Hotel DW — Confort y elegancia a su servicio.",
+        50,
+        740,
+        { align: "center", width: 500 }
+      );
+
+    doc.end();
+
+    // === Cuando termina el PDF ===
+    writeStream.on("finish", async () => {
+      const fileUrl = `http://localhost:8080/facturas/${numeroFactura}.pdf`;
+
+      // Enviar por correo
+      if (cliente?.email) {
+        try {
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+          });
+
+          const mailOptions = {
+            from: `"Hotel DW" <${process.env.EMAIL_USER}>`,
+            to: cliente.email,
+            subject: `Factura ${numeroFactura} - Hotel DW`,
+            text: `Estimado ${cliente.nombre}, adjuntamos su factura correspondiente a su reserva.`,
+            attachments: [{ filename: `${numeroFactura}.pdf`, path: facturaPath }],
+          };
+
+          await transporter.sendMail(mailOptions);
+          console.log(`✅ Factura enviada a ${cliente.email}`);
+        } catch (mailError) {
+          console.error("❌ Error enviando correo:", mailError);
+        }
+      }
+
+      // Guardar registro en la BD
+      try {
+        await Factura.create({
+          numero_factura: numeroFactura,
+          nombre_cliente: `${cliente?.nombre || ""} ${cliente?.apellido || ""}`.trim(),
+          correo_cliente: cliente?.email || "",
+          total: Number(total) || 0,
+          url_pdf: fileUrl,
+          metodo_pago: "PayPal",
+        });
+        console.log("🗂️ Factura registrada en BD:", numeroFactura);
+      } catch (e) {
+        console.error("Error guardando factura en BD:", e);
+      }
+
+      res.json({ ok: true, url: fileUrl });
+    });
+  } catch (error) {
+    console.error("Error generando factura:", error);
+    res.status(500).json({ ok: false, error: "Error generando factura" });
+  }
+};
+
+// ======================
+// 📋 LISTAR FACTURAS
+// ======================
+export const listarFacturas = async (req, res) => {
+  try {
+    const facturas = await Factura.findAll({
+      order: [["fecha_emision", "DESC"]],
+      attributes: [
+        "id_factura",
+        "numero_factura",
+        "nombre_cliente",
+        "correo_cliente",
+        "total",
+        "metodo_pago",
+        "url_pdf",
+        "fecha_emision",
+      ],
+    });
+    res.json({ ok: true, data: facturas });
+  } catch (err) {
+    console.error("Error listando facturas:", err);
+    res.status(500).json({ ok: false, error: "Error listando facturas" });
+  }
+};
