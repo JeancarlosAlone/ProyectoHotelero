@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
     tipoRegistro: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'manual' 
+      defaultValue: 'manual'
     },
     nameHuesped: {
       type: DataTypes.STRING,
@@ -22,7 +22,12 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       validate: {
         len: [8, 8] // exactamente 8 dígitos
-      }
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        validate: { isEmail: true }
+      },
     },
     numPersonas: {
       type: DataTypes.INTEGER,

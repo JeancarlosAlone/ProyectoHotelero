@@ -10,20 +10,34 @@ module.exports = {
 
   // GET by id
   async getRoomById(id) {
-    return Rooms.findByPk(id); // devuelve null si no existe
+    return Rooms.findByPk(id);
   },
 
   // POST save (crear habitación)
   async createRoom(room) {
-    return Rooms.create(room);
+    return Rooms.create({
+      id_Rooms: room.id_Rooms,
+      habitacion: room.habitacion,
+      nivel: room.nivel,
+      estado: room.estado,
+      precio: room.precio,
+      image_url: room.image_url || null,
+    });
   },
 
-  // PUT update
   async updateRoom(id, room) {
     const exists = await Rooms.findByPk(id);
     if (!exists) throw new Error('Habitación no encontrada');
 
-    await Rooms.update(room, { where: { id_Rooms: id } });
+    const updateData = {};
+    if (room.habitacion !== undefined) updateData.habitacion = room.habitacion;
+    if (room.nivel !== undefined) updateData.nivel = room.nivel;
+    if (room.estado !== undefined) updateData.estado = room.estado;
+    if (room.precio !== undefined) updateData.precio = room.precio;
+    if (room.image_url !== undefined) updateData.image_url = room.image_url;
+
+    await Rooms.update(updateData, { where: { id_Rooms: id } });
+
     return Rooms.findByPk(id);
   },
 
@@ -32,20 +46,15 @@ module.exports = {
     await Rooms.destroy({ where: { id_Rooms: id } });
   },
 
-  // existsById
   async existeRoom(id) {
     const found = await Rooms.findByPk(id);
     return !!found;
   },
 
-  // ===============================================
-  // NUEVA FUNCIÓN: obtener habitaciones disponibles
-  // ===============================================
   async getRoomsDisponibles(fechaInicio, fechaFin, numPersonas) {
     const { huespedes } = db;
 
     try {
-      // 1️⃣ Buscar huéspedes activos con fechas que se crucen con el rango dado
       const huespedesOcupando = await huespedes.findAll({
         where: {
           statusHuesped: { [Op.ne]: 'cancelado' },
@@ -63,19 +72,15 @@ module.exports = {
 
       const idsOcupadas = huespedesOcupando.map(h => h.id_Rooms);
 
-      // 2️⃣ Filtrar habitaciones que NO estén ocupadas y estén marcadas como "libre"
       const whereClause = {
         estado: 'libre',
-        ...(idsOcupadas.length ? { id_Rooms: { [Op.notIn]: idsOcupadas } } : {})
+        ...(idsOcupadas.length ? { id_Rooms: { [Op.notIn]: idsOcupadas } } : {}),
       };
 
-      // 3️⃣ Consultar habitaciones libres (ordenadas por nivel)
-      const roomsDisponibles = await Rooms.findAll({
+      return Rooms.findAll({
         where: whereClause,
         order: [['nivel', 'ASC']],
       });
-
-      return roomsDisponibles;
     } catch (error) {
       console.error("Error al obtener habitaciones disponibles:", error);
       throw new Error("No se pudo obtener la lista de habitaciones disponibles");

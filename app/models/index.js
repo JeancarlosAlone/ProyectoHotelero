@@ -24,7 +24,19 @@ db.rooms     = require("./rooms.model.js")(sequelize, Sequelize);
 db.huespedes = require("./huespedes.model.js")(sequelize, Sequelize);
 db.pagos = require("./pago.model.js")(sequelize, Sequelize);
 db.facturas = require("./facturas.model.js")(sequelize, Sequelize);
+db.clientes = require('./clientes.model.js')(sequelize, Sequelize);
+db.servicio_huesped = require("./servicioHuesped.model.js")(sequelize, Sequelize);
 
+// 🔗 Relación huésped → servicios adicionales
+db.huespedes.hasMany(db.servicio_huesped, {
+  foreignKey: "idHuesped",
+  as: "servicios"
+});
+
+db.servicio_huesped.belongsTo(db.huespedes, {
+  foreignKey: "idHuesped",
+  as: "huesped"
+});
 
 // Relaciones (para poder hacer include con los alias que usa el front)
 db.huespedes.belongsTo(db.usuarios, {

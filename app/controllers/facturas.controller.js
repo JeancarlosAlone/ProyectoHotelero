@@ -14,10 +14,7 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const QRCode = require("qrcode");
 
-// ======================
-// 🧾 GENERAR FACTURA
-// ======================
-export const generarFactura = async (req, res) => {
+export const generarFactura = async (req, res = null) => {
   try {
     const { cliente, habitacion, serviciosSeleccionados, total, pago } = req.body;
 
@@ -207,13 +204,24 @@ export const generarFactura = async (req, res) => {
         console.error("Error guardando factura en BD:", e);
       }
 
-      res.json({ ok: true, url: fileUrl });
+      // ✅ Si se llama vía HTTP responde normalmente
+      if (res) {
+        return res.json({ ok: true, url: fileUrl });
+      } else {
+        // ✅ Si se llama desde otro módulo (como pagos.controller)
+        console.log(`📤 Factura generada y enviada a ${cliente?.email || "—"} (${numeroFactura})`);
+      }
     });
   } catch (error) {
     console.error("Error generando factura:", error);
-    res.status(500).json({ ok: false, error: "Error generando factura" });
+    if (res) {
+      return res.status(500).json({ ok: false, error: "Error generando factura" });
+    } else {
+      throw error; // si se llama internamente, deja que el controlador lo capture
+    }
   }
 };
+
 
 // ======================
 // 📋 LISTAR FACTURAS

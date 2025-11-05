@@ -3,6 +3,7 @@ const router = express.Router();
 const huespedesController = require('../controllers/huespedes.controller');
 
 // ================== RUTAS ==================
+router.get('/pendientes', huespedesController.getPendientesPago);
 
 // GET todos los huéspedes
 router.get('/', huespedesController.getAllHuespedes);
