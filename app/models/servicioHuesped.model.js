@@ -39,4 +39,5 @@ module.exports = (sequelize, Sequelize) => {
   );
 
   return ServicioHuesped;
-};
+}; 
+

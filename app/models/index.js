@@ -1,3 +1,5 @@
+
+
 const dbConfig = require("../config/db.config.js");
 const Sequelize = require("sequelize");
 
@@ -26,6 +28,7 @@ db.pagos = require("./pago.model.js")(sequelize, Sequelize);
 db.facturas = require("./facturas.model.js")(sequelize, Sequelize);
 db.clientes = require('./clientes.model.js')(sequelize, Sequelize);
 db.servicio_huesped = require("./servicioHuesped.model.js")(sequelize, Sequelize);
+
 
 // 🔗 Relación huésped → servicios adicionales
 db.huespedes.hasMany(db.servicio_huesped, {

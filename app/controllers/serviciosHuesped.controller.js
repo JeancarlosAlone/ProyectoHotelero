@@ -1,3 +1,4 @@
+
 const db = require('../models');
 const ServicioHuesped = db.servicio_huesped;
 
@@ -56,3 +57,4 @@ exports.deleteServicio = async (req, res) => {
     return res.status(500).json({ message: 'Error al eliminar servicio', error: error.message });
   }
 };
+

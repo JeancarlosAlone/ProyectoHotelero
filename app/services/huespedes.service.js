@@ -1,3 +1,4 @@
+
 const db = require('../models');
 const Huespedes = db.huespedes;
 const { Op } = db.Sequelize;
@@ -218,3 +219,7 @@ module.exports = {
   deleteHuesped,
   existeHuesped
 };
+
+
+
+
