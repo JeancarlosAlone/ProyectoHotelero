@@ -49,7 +49,7 @@ export const generarFactura = async (req, res = null) => {
       .fillColor("#0c2344")
       .fontSize(22)
       .font("Helvetica-Bold")
-      .text("HOTEL DW", 150, 55)
+      .text("Olympus", 150, 55)
       .fontSize(10)
       .font("Helvetica")
       .text("Tel: +502 5555-5555 | info@hoteldw.com", 150, 80)
