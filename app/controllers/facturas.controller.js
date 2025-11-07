@@ -1,3 +1,4 @@
+
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 import nodemailer from "nodemailer";
@@ -132,7 +133,7 @@ export const generarFactura = async (req, res = null) => {
       .font("Helvetica-Bold")
       .fontSize(13)
       .text(`Método de pago: ${pago || "PayPal"}`, 50)
-      .text(`Total pagado: Q ${Number(total || 0).toFixed(2)}`)
+.text(`Total pagado: ${pago === 'PayPal' ? '$' : 'Q'} ${Number(total || 0).toFixed(2)}`)
       .moveDown();
 
     // QR
@@ -247,3 +248,8 @@ export const listarFacturas = async (req, res) => {
     res.status(500).json({ ok: false, error: "Error listando facturas" });
   }
 };
+
+
+
+
+

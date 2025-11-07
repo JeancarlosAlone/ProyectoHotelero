@@ -3,7 +3,11 @@ const ApiResponse = require('../utils/apiResponse');
 const db = require('../models');
 const { Op } = require('sequelize');
 
-
+/**
+ * ================================
+ * 🔹 GET: TODOS LOS HUÉSPEDES
+ * ================================
+ */
 exports.getAllHuespedes = async (req, res) => {
   try {
     const tipo = req.query.tipo || 'todos';
@@ -17,16 +21,26 @@ exports.getAllHuespedes = async (req, res) => {
       huespedes = await huespedService.getAllHuespedes();
     }
 
-    return res.status(200).json(huespedes || []);
+    // 💵 Agregar conversión a USD
+    const tipoCambio = 7.75;
+    const huespedesUSD = huespedes.map(h => {
+      const data = h.toJSON ? h.toJSON() : h;
+      data.montoUSD = data.monto ? parseFloat((data.monto / tipoCambio).toFixed(2)) : null;
+      return data;
+    });
+
+    return res.status(200).json(huespedesUSD || []);
   } catch (err) {
+    console.error("Error en getAllHuespedes:", err);
     return res.status(500).json({ message: err.message });
   }
 };
 
-
-
-
-// ================== GET BY ID ==================
+/**
+ * ================================
+ * 🔹 GET: HUÉSPED POR ID
+ * ================================
+ */
 exports.getHuespedById = async (req, res) => {
   try {
     const id = req.params.id;
@@ -42,15 +56,18 @@ exports.getHuespedById = async (req, res) => {
   }
 };
 
-// ================== CREATE ==================
+/**
+ * ================================
+ * 🔹 CREATE: NUEVO HUÉSPED
+ * ================================
+ */
 exports.createHuesped = async (req, res) => {
   try {
-    // 1️⃣ Crear el huésped
+    // 1️⃣ Crear huésped principal
     const nuevo = await huespedService.createHuesped(req.body);
 
-    // 2️⃣ Si vienen servicios adicionales, los guardamos
-    if (req.body.serviciosSeleccionados && req.body.serviciosSeleccionados.length > 0) {
-      const db = require('../models');
+    // 2️⃣ Guardar servicios adicionales si existen
+    if (req.body.serviciosSeleccionados?.length > 0) {
       const ServicioHuesped = db.servicio_huesped;
 
       const serviciosAInsertar = req.body.serviciosSeleccionados.map(serv => ({
@@ -63,16 +80,15 @@ exports.createHuesped = async (req, res) => {
       }));
 
       await ServicioHuesped.bulkCreate(serviciosAInsertar);
-      console.log(`${serviciosAInsertar.length} servicios guardados para huésped ${nuevo.idHuesped}`);
+      console.log(`✅ ${serviciosAInsertar.length} servicios guardados para huésped ${nuevo.idHuesped}`);
     }
 
-    // 3️⃣ Respuesta final
     return res.status(201).json({
       message: 'Huésped creado con éxito',
       huesped: nuevo
     });
   } catch (err) {
-    console.error('Error al crear huésped:', err);
+    console.error('❌ Error al crear huésped:', err);
     return res.status(400).json({
       message: 'Error al crear huésped',
       error: err.message
@@ -80,13 +96,17 @@ exports.createHuesped = async (req, res) => {
   }
 };
 
+/**
+ * ================================
+ * 🔹 GET: HUÉSPEDES PENDIENTES DE PAGO
+ * ================================
+ */
 exports.getPendientesPago = async (req, res) => {
   try {
     const { nombre, fecha } = req.query;
 
     const whereClause = { statusHuesped: 'pendiente de pago' };
 
-    // 🔍 Búsqueda flexible por nombre o apellido
     if (nombre) {
       whereClause[Op.or] = [
         { nameHuesped: { [Op.iLike]: `%${nombre}%` } },
@@ -94,9 +114,7 @@ exports.getPendientesPago = async (req, res) => {
       ];
     }
 
-    if (fecha) {
-      whereClause.fechaRegistro = fecha;
-    }
+    if (fecha) whereClause.fechaRegistro = fecha;
 
     const pendientes = await db.huespedes.findAll({
       where: whereClause,
@@ -110,7 +128,7 @@ exports.getPendientesPago = async (req, res) => {
         'monto',
         'statusHuesped',
         'fechaRegistro',
-        'fechaSalida',
+        'fechaSalida'
       ],
       include: [
         {
@@ -127,19 +145,25 @@ exports.getPendientesPago = async (req, res) => {
       order: [['fechaRegistro', 'DESC']]
     });
 
-
-
     if (!pendientes || pendientes.length === 0) {
       return res.status(404).json({
-        message: 'Huésped no encontrado',
+        message: 'No hay huéspedes pendientes de pago',
         status: 404,
-        data: null
+        data: []
       });
     }
 
-    res.status(200).json(pendientes);
+    // 💵 Calcular monto en dólares
+    const tipoCambio = 7.75;
+    const pendientesUSD = pendientes.map(h => {
+      const data = h.toJSON();
+      data.montoUSD = data.monto ? parseFloat((data.monto / tipoCambio).toFixed(2)) : null;
+      return data;
+    });
+
+    return res.status(200).json(pendientesUSD);
   } catch (error) {
-    console.error('Error en getPendientesPago:', error);
+    console.error('❌ Error en getPendientesPago:', error);
     res.status(500).json({
       message: 'Error al obtener huéspedes pendientes',
       error: error.message
@@ -147,8 +171,11 @@ exports.getPendientesPago = async (req, res) => {
   }
 };
 
-
-// ================== UPDATE ==================
+/**
+ * ================================
+ * 🔹 UPDATE: HUÉSPED
+ * ================================
+ */
 exports.updateHuesped = async (req, res) => {
   try {
     const id = req.params.id;
@@ -165,19 +192,20 @@ exports.updateHuesped = async (req, res) => {
   }
 };
 
-// ================== DELETE ==================
+/**
+ * ================================
+ * 🔹 DELETE: HUÉSPED
+ * ================================
+ */
 exports.deleteHuesped = async (req, res) => {
   try {
     const id = req.params.id;
-
-    // devuelve cuántas filas se borraron
     const rowsDeleted = await huespedService.deleteHuesped(id);
 
     if (rowsDeleted === 0) {
       return res.status(404).json({ message: "Huésped no encontrado" });
     }
 
-    // ← 200 con body en lugar de 204 vacío
     return res.status(200).json({ message: "Huésped eliminado", id, deleted: true });
   } catch (err) {
     return res.status(500).json({ message: "Error al eliminar huésped: " + err.message });

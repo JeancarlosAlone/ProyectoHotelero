@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(8),
       allowNull: false,
       validate: {
-        len: [8, 8] // exactamente 8 dígitos
+        len: [8, 8] 
       },
       email: {
         type: DataTypes.STRING,

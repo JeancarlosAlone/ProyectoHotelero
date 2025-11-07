@@ -1,4 +1,3 @@
-
 const db = require('../models');
 const Huespedes = db.huespedes;
 const { Op } = db.Sequelize;
@@ -17,6 +16,11 @@ async function generateUniqueId(nombre, apellido) {
   return id;
 }
 
+/**
+ * ============================
+ * 🔹 Obtener todos los huéspedes
+ * ============================
+ */
 async function getAllHuespedes() {
   const { usuarios, rooms } = db;
 
@@ -54,6 +58,11 @@ async function getAllHuespedes() {
   }));
 }
 
+/**
+ * ============================
+ * 🔹 Filtros por tipo de huésped
+ * ============================
+ */
 async function getHuespedesManuales() {
   const { usuarios, rooms } = db;
   return Huespedes.findAll({
@@ -108,6 +117,11 @@ async function getHuespedesEnLinea() {
   });
 }
 
+/**
+ * ============================
+ * 🔹 Obtener huésped por ID
+ * ============================
+ */
 async function getHuespedById(id) {
   const { usuarios, rooms } = db;
 
@@ -139,6 +153,11 @@ async function getHuespedById(id) {
   });
 }
 
+/**
+ * ============================
+ * 🔹 Crear huésped (versión mejorada)
+ * ============================
+ */
 async function createHuesped(data) {
   if (data.fechaSalida && new Date(data.fechaSalida) <= new Date()) {
     throw new Error("La fecha de salida no puede ser menor o igual a la fecha actual");
@@ -146,8 +165,17 @@ async function createHuesped(data) {
 
   const id_users = data.usuarioRegistrador?.id_users ?? data.id_users ?? null;
   const id_Rooms = data.habitacionAsignada?.id_Rooms ?? data.id_Rooms ?? null;
-
   const estadoPago = data.statusHuesped || "pendiente de pago";
+
+  // 💵 Detectar y convertir monto a USD si es necesario
+  const tipoCambio = 7.75;
+  let montoUSD = null;
+
+  if (data.moneda === "USD") {
+    montoUSD = parseFloat(data.monto);
+  } else {
+    montoUSD = parseFloat((data.monto / tipoCambio).toFixed(2));
+  }
 
   const payload = {
     idHuesped: await generateUniqueId(data.nameHuesped, data.apellidoHuesped),
@@ -155,20 +183,22 @@ async function createHuesped(data) {
     apellidoHuesped: data.apellidoHuesped,
     telefono: data.telefono,
     numPersonas: data.numPersonas,
-    monto: data.monto,
+    monto: montoUSD, // 💵 Se guarda el monto en USD
     statusHuesped: estadoPago,
     fechaRegistro: new Date(),
     fechaSalida: data.fechaSalida,
     id_users,
     id_Rooms,
+    moneda: "USD"
   };
 
   const nuevoHuesped = await Huespedes.create(payload);
 
+  // 🏨 Actualizar habitación
   if (id_Rooms) {
     const room = await db.rooms.findByPk(id_Rooms);
     if (room) {
-      room.estado = "ocupada"; 
+      room.estado = "ocupada";
       await room.save();
     }
   }
@@ -176,6 +206,11 @@ async function createHuesped(data) {
   return nuevoHuesped;
 }
 
+/**
+ * ============================
+ * 🔹 Actualizar huésped
+ * ============================
+ */
 async function updateHuesped(id, data) {
   const existe = await Huespedes.findByPk(id);
   if (!existe) throw new Error("Huésped no encontrado");
@@ -219,7 +254,3 @@ module.exports = {
   deleteHuesped,
   existeHuesped
 };
-
-
-
-

@@ -5,7 +5,7 @@ const db = require("../models");
 
 const crearOrdenPago = async (req, res) => {
   try {
-    const { total } = req.body;
+    const { total, currency } = req.body;
 
     if (!total) {
       return res
@@ -13,7 +13,9 @@ const crearOrdenPago = async (req, res) => {
         .json(apiResponse("Total es requerido", "error"));
     }
 
-    const orden = await crearOrden(total);
+    // 🔹 Si no se especifica, por defecto será USD
+    const orden = await crearOrden(total, currency || 'USD');
+
     return res
       .status(201)
       .json(apiResponse("Orden creada correctamente", "success", orden));
@@ -34,25 +36,33 @@ const capturarPago = async (req, res) => {
     const capture = resultado.purchase_units?.[0]?.payments?.captures?.[0];
     const payer = resultado.payer;
 
-    // Guardar el pago en BD
+    // 🧾 Datos básicos del pago desde PayPal
+    const montoUSD = parseFloat(capture?.amount?.value || 0);
+    const moneda = capture?.amount?.currency_code || "USD";
+    const fechaPago = new Date(capture?.create_time || new Date());
+
+    // 💾 Guardar el pago en la base de datos
     const nuevoPago = await db.pagos.create({
       order_id: resultado.id,
       capture_id: capture?.id || "SIN_ID",
       estado: resultado.status,
       email_cliente: payer?.email_address || "desconocido",
       nombre_cliente: `${payer?.name?.given_name || ""} ${payer?.name?.surname || ""}`,
-      monto: parseFloat(capture?.amount?.value || 0),
-      moneda: capture?.amount?.currency_code || "USD",
-      fecha_pago: new Date(capture?.create_time || new Date())
+      monto: montoUSD, // 🔹 Se guarda el monto original en USD
+      moneda: moneda,
+      fecha_pago: fechaPago,
+      metodo_pago: "PayPal"
     });
 
-    // Actualizar huésped
+    // 🔹 Actualizar el huésped con el monto en USD
     const huesped = idHuesped ? await db.huespedes.findByPk(idHuesped) : null;
     if (huesped) {
       huesped.statusHuesped = "pagado";
+      huesped.monto = montoUSD; // 💵 Guardamos el monto en dólares
       await huesped.save();
     }
 
+    // 🧾 Generar factura con el monto real en USD
     if (huesped) {
       try {
         await generarFactura({
@@ -66,8 +76,8 @@ const capturarPago = async (req, res) => {
             },
             habitacion: huesped.habitacionAsignada || {},
             serviciosSeleccionados: huesped.servicios || [],
-            total: capture?.amount?.value,
-            pago: "PayPal",
+            total: montoUSD,
+            pago: "PayPal (USD)",
           },
         }, { 
           json: (data) => console.log("Factura generada:", data) 
@@ -87,6 +97,7 @@ const capturarPago = async (req, res) => {
     return res.status(500).json(apiResponse("Error al capturar el pago", "error"));
   }
 };
+
 
 
 // ======================== NUEVO ENDPOINT: REGISTRAR PAGO ========================

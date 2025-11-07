@@ -1,4 +1,6 @@
 require('dotenv').config();
+const paypal = require("@paypal/checkout-server-sdk");
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -51,6 +53,9 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.get('/', (req, res) => {
   res.send('Servidor Node.js funcionando correctamente 🚀');
 });
+
+app.use('/facturas', express.static(path.join(__dirname, 'facturas')));
+
 
 // Rutas de API (ya existentes)
 const usuariosRoutes = require('./app/routes/usuarios.routes');
