@@ -5,7 +5,9 @@ const Rooms = db.rooms;
 module.exports = {
   // GET all
   async getAllRooms() {
-    return Rooms.findAll();
+    return await Rooms.findAll({
+    order: [['id_Rooms', 'ASC']]
+  });
   },
 
   // GET by id

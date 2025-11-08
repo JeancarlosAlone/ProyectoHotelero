@@ -23,7 +23,6 @@ async function generateUniqueId(name, apellido) {
   return id;
 }
 
-// ==================== LOGIN ====================
 exports.login = async (req, res) => {
   try {
     const { id_users, name, username, password } = req.body;
@@ -78,7 +77,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// ==================== REGISTER ====================
 exports.register = async (req, res) => {
   try {
     const { name, apellido, password, typeUser = "user" } = req.body;

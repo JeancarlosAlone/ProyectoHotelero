@@ -35,126 +35,166 @@ export const generarFactura = async (req, res = null) => {
     const writeStream = fs.createWriteStream(facturaPath);
     doc.pipe(writeStream);
 
-    // Fondo
-    const gradient = doc.linearGradient(0, 0, 600, 800);
-    gradient.stop(0, "#ffffff").stop(1, "#e8e8f0");
-    doc.rect(0, 0, 600, 800).fill(gradient);
+    // ======= FONDO Y ESTILO GENERAL =======
+    const beige = "#FFFDF5";
+    const dorado = "#FFD700";
+    const doradoOscuro = "#A67C00";
+    const negro = "#000000";
 
-    // Logo
-    const logoPath = path.join(__dirname, "../../public/assets/images/LosMolinos.jpeg");
-    if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 50, { width: 100 });
+    doc.rect(0, 0, 600, 800).fill(beige);
 
-    // Encabezado
+    // ======= ENCABEZADO =======
     doc
-      .fillColor("#0c2344")
-      .fontSize(22)
+      .rect(0, 0, 600, 90)
+      .fillColor(doradoOscuro)
+      .fill();
+
+    const logoPath = path.join(__dirname, "../../public/assets/images/LosMolinos.jpeg");
+    if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 25, { width: 60 });
+
+    doc
+      .fillColor(beige)
+      .fontSize(24)
       .font("Helvetica-Bold")
-      .text("Olympus", 150, 55)
+      .text("HOTEL OLYMPUS", 130, 30)
       .fontSize(10)
       .font("Helvetica")
-      .text("Tel: +502 5555-5555 | info@hoteldw.com", 150, 80)
-      .moveDown();
+      .text("Confort y elegancia a su servicio", 130, 55);
 
     doc
-      .strokeColor("#d4af37")
-      .lineWidth(2)
-      .moveTo(50, 110)
-      .lineTo(550, 110)
-      .stroke();
+      .fillColor(beige)
+      .font("Helvetica-Oblique")
+      .text("Tel: +502 5555-5555 | info@hoteldw.com", 130, 70);
 
-    // Datos factura
+    // ======= SECCIÓN DATOS FACTURA =======
     doc
-      .fillColor("#0c2344")
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .text(`Factura No.: ${numeroFactura}`, 50, 130)
-      .text(`Fecha de emisión: ${fechaEmision}`, 50, 145)
-      .moveDown();
-
-    // Datos cliente
-    doc
-      .fillColor("#0c2344")
+      .fillColor(doradoOscuro)
       .fontSize(14)
       .font("Helvetica-Bold")
-      .text("Datos del Cliente", 50, 180)
-      .font("Helvetica")
-      .fillColor("black")
+      .text("Factura de Reserva", 50, 110)
+      .strokeColor(dorado)
+      .lineWidth(1.5)
+      .moveTo(50, 130)
+      .lineTo(550, 130)
+      .stroke();
+
+    doc
       .fontSize(11)
+      .font("Helvetica")
+      .fillColor(negro)
+      .text(`Factura No.: ${numeroFactura}`, 50, 145)
+      .text(`Fecha de emisión: ${fechaEmision}`, 50, 160);
+
+    // ======= DATOS DEL CLIENTE =======
+    doc
+      .fillColor(doradoOscuro)
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text("Datos del Cliente", 50, 190)
       .moveDown(0.3)
+      .font("Helvetica")
+      .fillColor(negro)
+      .fontSize(11)
       .text(`Nombre: ${cliente?.nombre || ""} ${cliente?.apellido || ""}`)
       .text(`DPI: ${cliente?.dpi || ""}`)
       .text(`Teléfono: ${cliente?.telefono || ""}`)
-      .text(`Correo electrónico: ${cliente?.email || ""}`)
-      .moveDown();
+      .text(`Correo electrónico: ${cliente?.email || ""}`);
 
-    // Detalle de reserva
+    // ======= CÁLCULOS =======
+    const noches = cliente?.nochesEstancia || 1;
+    const totalHabitacion = (habitacion?.precio || 0) * noches;
+    const totalServicios = serviciosSeleccionados?.reduce(
+      (acc, s) => acc + (s.precioFinal || s.precio || 0),
+      0
+    );
+    const totalFinal = totalHabitacion + totalServicios;
+
+    // ======= DETALLE HABITACIÓN =======
     doc
-      .fillColor("#0c2344")
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .text("Detalle de la Reserva", 50)
-      .font("Helvetica")
-      .fillColor("black")
-      .fontSize(11)
-      .moveDown(0.3)
-      .text(`Habitación: ${habitacion?.habitacion || ""}`)
-      .text(`Nivel: ${habitacion?.nivel || ""}`)
-      .text(`Precio base: Q ${habitacion?.precio || 0}`)
-      .moveDown();
-
-    // Servicios adicionales
-    doc
-      .fillColor("#0c2344")
-      .font("Helvetica-Bold")
-      .fontSize(14)
-      .text("Servicios Adicionales", 50)
-      .moveDown(0.5)
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor("black");
-
-    if (serviciosSeleccionados?.length > 0) {
-      serviciosSeleccionados.forEach((s) => {
-        doc.text(
-          `• ${s.nombre} — Q ${s.precioFinal || s.precio} ${
-            s.descuento ? `(${s.descuento}% desc.)` : ""
-          }`
-        );
-      });
-    } else {
-      doc.text("Sin servicios adicionales seleccionados.");
-    }
-
-    doc.moveDown();
-
-    // Totales
-    doc
-      .fillColor("#0c2344")
+      .moveDown()
+      .fillColor(doradoOscuro)
       .font("Helvetica-Bold")
       .fontSize(13)
-      .text(`Método de pago: ${pago || "PayPal"}`, 50)
-.text(`Total pagado: ${pago === 'PayPal' ? '$' : 'Q'} ${Number(total || 0).toFixed(2)}`)
-      .moveDown();
+      .text("Detalle de la Habitación", 50)
+      .moveDown(0.3)
+      .font("Helvetica")
+      .fillColor(negro)
+      .text(`Habitación: ${habitacion?.habitacion || ""}`)
+      .text(`Nivel: ${habitacion?.nivel || ""}`)
+      .text(`Precio total por noche: Q ${totalHabitacion.toFixed(2)}`);
 
-    // QR
+    // ======= SERVICIOS ADICIONALES =======
+    doc
+      .moveDown()
+      .fillColor(doradoOscuro)
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .text("Servicios Adicionales", 50)
+      .moveDown(0.5);
+
+    if (serviciosSeleccionados?.length > 0) {
+      doc.font("Helvetica").fillColor(negro).fontSize(11);
+      serviciosSeleccionados.forEach((s) => {
+        doc.text(`• ${s.nombre} — Q ${s.precioFinal || s.precio}`);
+      });
+
+      doc
+        .moveDown(0.5)
+        .font("Helvetica-Bold")
+        .fillColor(doradoOscuro)
+        .text(`Total pagado de servicios: Q ${totalServicios.toFixed(2)}`);
+    } else {
+      doc
+        .font("Helvetica")
+        .fillColor(negro)
+        .fontSize(11)
+        .text("Sin servicios adicionales seleccionados.")
+        .moveDown(0.5)
+        .font("Helvetica-Bold")
+        .fillColor(doradoOscuro)
+        .text("Total pagado de servicios: Q 0.00");
+    }
+
+    // ======= RESUMEN DE PAGO =======
+    doc
+      .moveDown()
+      .font("Helvetica-Bold")
+      .fillColor(doradoOscuro)
+      .fontSize(13)
+      .text("Resumen del Pago", 50)
+      .strokeColor(dorado)
+      .lineWidth(1)
+      .moveTo(50, doc.y + 5)
+      .lineTo(550, doc.y + 5)
+      .stroke()
+      .moveDown(1);
+
+    doc
+      .font("Helvetica")
+      .fillColor(negro)
+      .fontSize(12)
+      .text(`Método de pago: ${pago || "PayPal"}`)
+      .text(`Total pagado: Q ${totalFinal.toFixed(2)}`);
+
+    // ======= QR =======
     const qrX = 420;
     const qrY = doc.y - 10;
     doc.image(qrImage, qrX, qrY, { width: 100 });
     doc
       .fontSize(9)
-      .fillColor("#0c2344")
+      .fillColor(doradoOscuro)
       .text("Escanee para confirmar Check-in", qrX, qrY + 105, { width: 120 });
 
-    // Pie
+    // ======= PIE =======
     doc
       .moveDown(3)
       .fontSize(10)
-      .fillColor("#d4af37")
+      .fillColor(doradoOscuro)
       .font("Helvetica-Oblique")
       .text(
-        "Gracias por su preferencia. Hotel DW — Confort y elegancia a su servicio.",
+        "Gracias por su preferencia — Olympus Hotel, Salamá, Baja Verapaz.",
         50,
-        740,
+        750,
         { align: "center", width: 500 }
       );
 
@@ -196,7 +236,7 @@ export const generarFactura = async (req, res = null) => {
           numero_factura: numeroFactura,
           nombre_cliente: `${cliente?.nombre || ""} ${cliente?.apellido || ""}`.trim(),
           correo_cliente: cliente?.email || "",
-          total: Number(total) || 0,
+          total: Number(totalFinal) || 0,
           url_pdf: fileUrl,
           metodo_pago: "PayPal",
         });
@@ -209,7 +249,6 @@ export const generarFactura = async (req, res = null) => {
       if (res) {
         return res.json({ ok: true, url: fileUrl });
       } else {
-        // ✅ Si se llama desde otro módulo (como pagos.controller)
         console.log(`📤 Factura generada y enviada a ${cliente?.email || "—"} (${numeroFactura})`);
       }
     });
@@ -218,15 +257,12 @@ export const generarFactura = async (req, res = null) => {
     if (res) {
       return res.status(500).json({ ok: false, error: "Error generando factura" });
     } else {
-      throw error; // si se llama internamente, deja que el controlador lo capture
+      throw error;
     }
   }
 };
 
 
-// ======================
-// 📋 LISTAR FACTURAS
-// ======================
 export const listarFacturas = async (req, res) => {
   try {
     const facturas = await Factura.findAll({

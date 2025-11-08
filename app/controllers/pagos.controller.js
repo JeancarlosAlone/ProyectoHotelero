@@ -13,7 +13,6 @@ const crearOrdenPago = async (req, res) => {
         .json(apiResponse("Total es requerido", "error"));
     }
 
-    // 🔹 Si no se especifica, por defecto será USD
     const orden = await crearOrden(total, currency || 'USD');
 
     return res
@@ -36,33 +35,30 @@ const capturarPago = async (req, res) => {
     const capture = resultado.purchase_units?.[0]?.payments?.captures?.[0];
     const payer = resultado.payer;
 
-    // 🧾 Datos básicos del pago desde PayPal
     const montoUSD = parseFloat(capture?.amount?.value || 0);
     const moneda = capture?.amount?.currency_code || "USD";
     const fechaPago = new Date(capture?.create_time || new Date());
 
-    // 💾 Guardar el pago en la base de datos
     const nuevoPago = await db.pagos.create({
       order_id: resultado.id,
       capture_id: capture?.id || "SIN_ID",
       estado: resultado.status,
       email_cliente: payer?.email_address || "desconocido",
       nombre_cliente: `${payer?.name?.given_name || ""} ${payer?.name?.surname || ""}`,
-      monto: montoUSD, // 🔹 Se guarda el monto original en USD
+      monto: montoUSD, 
       moneda: moneda,
       fecha_pago: fechaPago,
       metodo_pago: "PayPal"
     });
 
-    // 🔹 Actualizar el huésped con el monto en USD
     const huesped = idHuesped ? await db.huespedes.findByPk(idHuesped) : null;
     if (huesped) {
       huesped.statusHuesped = "pagado";
-      huesped.monto = montoUSD; // 💵 Guardamos el monto en dólares
+      huesped.monto = montoUSD; 
       await huesped.save();
     }
 
-    // 🧾 Generar factura con el monto real en USD
+  
     if (huesped) {
       try {
         await generarFactura({
