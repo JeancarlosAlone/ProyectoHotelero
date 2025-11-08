@@ -2,7 +2,7 @@
 module.exports = (sequelize, Sequelize) => {
   const Usuarios = sequelize.define('usuarios', {
     id_users: {
-      type: Sequelize.STRING(12), // PK string (ej. "JL0005")
+      type: Sequelize.STRING(12), 
       primaryKey: true,
       allowNull: false,
     },
