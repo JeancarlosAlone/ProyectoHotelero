@@ -3,11 +3,6 @@ const ApiResponse = require('../utils/apiResponse');
 const db = require('../models');
 const { Op } = require('sequelize');
 
-/**
- * ================================
- * 🔹 GET: TODOS LOS HUÉSPEDES
- * ================================
- */
 exports.getAllHuespedes = async (req, res) => {
   try {
     const tipo = req.query.tipo || 'todos';
@@ -21,7 +16,6 @@ exports.getAllHuespedes = async (req, res) => {
       huespedes = await huespedService.getAllHuespedes();
     }
 
-    // 💵 Agregar conversión a USD
     const tipoCambio = 7.75;
     const huespedesUSD = huespedes.map(h => {
       const data = h.toJSON ? h.toJSON() : h;
@@ -36,11 +30,6 @@ exports.getAllHuespedes = async (req, res) => {
   }
 };
 
-/**
- * ================================
- * 🔹 GET: HUÉSPED POR ID
- * ================================
- */
 exports.getHuespedById = async (req, res) => {
   try {
     const id = req.params.id;
@@ -56,17 +45,12 @@ exports.getHuespedById = async (req, res) => {
   }
 };
 
-/**
- * ================================
- * 🔹 CREATE: NUEVO HUÉSPED
- * ================================
- */
 exports.createHuesped = async (req, res) => {
   try {
-    // 1️⃣ Crear huésped principal
+    // 1️Crear huésped principal
     const nuevo = await huespedService.createHuesped(req.body);
 
-    // 2️⃣ Guardar servicios adicionales si existen
+    // 2️ Guardar servicios adicionales si existen
     if (req.body.serviciosSeleccionados?.length > 0) {
       const ServicioHuesped = db.servicio_huesped;
 
@@ -80,7 +64,7 @@ exports.createHuesped = async (req, res) => {
       }));
 
       await ServicioHuesped.bulkCreate(serviciosAInsertar);
-      console.log(`✅ ${serviciosAInsertar.length} servicios guardados para huésped ${nuevo.idHuesped}`);
+      console.log(`${serviciosAInsertar.length} servicios guardados para huésped ${nuevo.idHuesped}`);
     }
 
     return res.status(201).json({
@@ -88,7 +72,7 @@ exports.createHuesped = async (req, res) => {
       huesped: nuevo
     });
   } catch (err) {
-    console.error('❌ Error al crear huésped:', err);
+    console.error('Error al crear huésped:', err);
     return res.status(400).json({
       message: 'Error al crear huésped',
       error: err.message
@@ -96,11 +80,6 @@ exports.createHuesped = async (req, res) => {
   }
 };
 
-/**
- * ================================
- * 🔹 GET: HUÉSPEDES PENDIENTES DE PAGO
- * ================================
- */
 exports.getPendientesPago = async (req, res) => {
   try {
     const { nombre, fecha } = req.query;
@@ -153,7 +132,6 @@ exports.getPendientesPago = async (req, res) => {
       });
     }
 
-    // 💵 Calcular monto en dólares
     const tipoCambio = 7.75;
     const pendientesUSD = pendientes.map(h => {
       const data = h.toJSON();
@@ -163,7 +141,7 @@ exports.getPendientesPago = async (req, res) => {
 
     return res.status(200).json(pendientesUSD);
   } catch (error) {
-    console.error('❌ Error en getPendientesPago:', error);
+    console.error('Error en getPendientesPago:', error);
     res.status(500).json({
       message: 'Error al obtener huéspedes pendientes',
       error: error.message
@@ -171,11 +149,6 @@ exports.getPendientesPago = async (req, res) => {
   }
 };
 
-/**
- * ================================
- * 🔹 UPDATE: HUÉSPED
- * ================================
- */
 exports.updateHuesped = async (req, res) => {
   try {
     const id = req.params.id;
@@ -192,11 +165,7 @@ exports.updateHuesped = async (req, res) => {
   }
 };
 
-/**
- * ================================
- * 🔹 DELETE: HUÉSPED
- * ================================
- */
+
 exports.deleteHuesped = async (req, res) => {
   try {
     const id = req.params.id;

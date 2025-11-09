@@ -13,11 +13,12 @@ const crearOrdenPago = async (req, res) => {
         .json(apiResponse("Total es requerido", "error"));
     }
 
-    const orden = await crearOrden(total, currency || 'USD');
+    // Llamada al servicio de creación de la orden
+    const orderId = await crearOrden(total, currency || 'USD');
 
     return res
       .status(201)
-      .json(apiResponse("Orden creada correctamente", "success", orden));
+      .json(apiResponse("Orden creada correctamente", "success", { id: orderId }));  // Aquí devolvemos el ID de la orden
   } catch (error) {
     console.error("Error al crear la orden:", error);
     return res
@@ -25,6 +26,7 @@ const crearOrdenPago = async (req, res) => {
       .json(apiResponse("Error al crear la orden", "error"));
   }
 };
+
 
 const capturarPago = async (req, res) => {
   try {

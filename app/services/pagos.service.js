@@ -38,7 +38,13 @@ async function crearOrden(total, moneda = "USD") {
   });
 
   const response = await client().execute(request);
-  return response.result;
+  // Asegúrate de devolver la respuesta con el id
+  if (response && response.result && response.result.id) {
+    return response.result.id;  // Esto es lo que se necesita enviar al frontend
+  } else {
+    console.error("No se ha recibido un ID válido de la orden.");
+    throw new Error("Error al crear la orden");
+  }
 }
 
 
