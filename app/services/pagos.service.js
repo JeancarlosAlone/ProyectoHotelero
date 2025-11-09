@@ -1,19 +1,26 @@
+require('dotenv').config();
 const paypal = require("@paypal/checkout-server-sdk");
 
 function environment() {
-  return new paypal.core.SandboxEnvironment(
-    process.env.PAYPAL_CLIENT_ID,
-    process.env.PAYPAL_CLIENT_SECRET
-  );
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    // Provide a clear error so it's visible in logs instead of the opaque PayPal "invalid_client"
+    throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set in environment variables');
+  }
+
+  // Allow switching between sandbox and live using PAYPAL_ENV (values: 'sandbox' or 'live')
+  const useLive = (process.env.PAYPAL_ENV === 'live' || process.env.NODE_ENV === 'production');
+
+  return useLive
+    ? new paypal.core.LiveEnvironment(clientId, clientSecret)
+    : new paypal.core.SandboxEnvironment(clientId, clientSecret);
 }
 
 function client() {
   return new paypal.core.PayPalHttpClient(environment());
 }
-
-module.exports = {
-  client
-};
 
 async function crearOrden(total, moneda = "USD") {
   const request = new paypal.orders.OrdersCreateRequest();
