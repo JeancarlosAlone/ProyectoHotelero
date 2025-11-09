@@ -29,7 +29,7 @@ const upload = multer({ storage: storage });
 app.use(cors());
 app.use(
   cors({
-    origin: 'http://localhost:4200', // permite tu frontend Angular
+    origin: '*', // permite tu frontend Angular
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
