@@ -11,7 +11,7 @@ function environment() {
   }
 
   // Allow switching between sandbox and live using PAYPAL_ENV (values: 'sandbox' or 'live')
-  const useLive = (process.env.PAYPAL_ENV === 'sandbox' || process.env.NODE_ENV === 'production');
+  const useLive = (process.env.PAYPAL_ENV === 'live' || process.env.NODE_ENV === 'production');
 
   return useLive
     ? new paypal.core.LiveEnvironment(clientId, clientSecret)
