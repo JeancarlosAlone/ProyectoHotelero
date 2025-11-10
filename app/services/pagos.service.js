@@ -11,7 +11,14 @@ function environment() {
   }
 
   // Allow switching between sandbox and live using PAYPAL_ENV (values: 'sandbox' or 'live')
-  const useLive = (process.env.PAYPAL_ENV === 'live' || process.env.NODE_ENV === 'production');
+  // Determine PayPal environment explicitly via PAYPAL_ENV ('sandbox' or 'live').
+  // Do NOT assume production NODE_ENV implies live PayPal — this avoids accidentally hitting live
+  // credentials when deploying for testing. Default to 'sandbox' when unspecified.
+  const paypalEnv = (process.env.PAYPAL_ENV || 'sandbox').toLowerCase();
+  const useLive = (paypalEnv === 'live');
+
+  // Helpful log for debugging (don't print secrets)
+  console.log(`PayPal environment: ${paypalEnv} (${useLive ? 'Live' : 'Sandbox'})`);
 
   return useLive
     ? new paypal.core.LiveEnvironment(clientId, clientSecret)
