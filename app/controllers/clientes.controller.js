@@ -53,35 +53,55 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { correo, password } = req.body;
+    const { correo, nombre, password } = req.body;
 
-    if (!correo || !password) {
-      return res.status(400).json({ message: "Correo y contraseña son requeridos" });
+    if (!correo && !nombre) {
+      return res.status(400).json({ message: "Debes enviar correo o nombre" });
     }
 
-    const cliente = await Clientes.findOne({ where: { correo } });
+    if (!password) {
+      return res.status(400).json({ message: "Debes enviar la contraseña" });
+    }
+
+    // Buscar cliente por correo o nombre
+    const whereClause = correo ? { correo } : { nombre };
+    const cliente = await Clientes.findOne({ where: whereClause });
 
     if (!cliente) {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    // Verificar la contraseña
-    const validPassword = await bcrypt.compare(password, cliente.password);
-    if (!validPassword) {
-      return res.status(401).json({ message: "Contraseña incorrecta" });
+    let ok = false;
+    if (cliente.password.startsWith("$2")) {
+      ok = await bcrypt.compare(password, cliente.password);
+    } else {
+      ok = cliente.password === password;
     }
 
+    if (!ok) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
+
+    // Generar token
     const token = jwt.sign(
-  { id: cliente.id_cliente, name: cliente.nombre, typeUser: 'client' },
-  jwtConfig.secret,
-  { expiresIn: jwtConfig.expiresIn }
-);
+      { id: cliente.id_cliente, nombre: cliente.nombre, tipo: "cliente" },
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
+    );
 
-
-    res.status(200).json({ token, cliente: { id: cliente.id_cliente, name: cliente.nombre } });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error al autenticar el cliente" });
+    return res.status(200).json({
+      message: "Login exitoso",
+      token,
+      cliente: {
+        id: cliente.id_cliente,
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        correo: cliente.correo,
+      },
+    });
+  } catch (error) {
+    console.error("Error en login cliente:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
 
