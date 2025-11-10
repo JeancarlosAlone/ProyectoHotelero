@@ -25,16 +25,18 @@ const storage = multer.diskStorage({
 // Crear el middleware para cargar la imagen
 const upload = multer({ storage: storage });
 
-// Habilitar CORS
-app.use(cors());
-app.use(
-  cors({
-    origin: '*', // permite tu frontend Angular
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-  })
-);
+const corsOptions = {
+  origin: [
+    "https://olympusf.onrender.com", // tu dominio FRONTEND en Render
+    "http://localhost:4200"          // opcional: desarrollo local
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+
 
 // Body parser (aumentamos límite para imágenes base64)
 app.use(express.json({ limit: '15mb' }));
