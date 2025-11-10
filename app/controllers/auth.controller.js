@@ -50,12 +50,12 @@ exports.login = async (req, res) => {
     }
 
     // Comparar la contraseña
-    let ok = false;
     if (typeof usuario.password === "string" && /^\$2[aby]\$/.test(usuario.password)) {
-      ok = await bcrypt.compare(password, usuario.password);
-    } else {
-      ok = usuario.password === password;
-    }
+  ok = await bcrypt.compare(password, usuario.password);
+} else {
+  ok = usuario.password === password;
+}
+
 
     if (!ok) {
       return res.status(401).json({ message: "Credenciales inválidas" });

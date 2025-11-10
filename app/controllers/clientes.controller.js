@@ -71,12 +71,12 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Contraseña incorrecta" });
     }
 
-    // Generar token JWT
     const token = jwt.sign(
-      { id: cliente.id_cliente, name: cliente.nombre },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
-    );
+  { id: cliente.id_cliente, name: cliente.nombre, typeUser: 'client' },
+  jwtConfig.secret,
+  { expiresIn: jwtConfig.expiresIn }
+);
+
 
     res.status(200).json({ token, cliente: { id: cliente.id_cliente, name: cliente.nombre } });
   } catch (err) {
