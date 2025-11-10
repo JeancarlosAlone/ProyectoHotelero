@@ -1,6 +1,7 @@
 // app/controllers/clientes.controller.js
 const db = require('../models');
 const Clientes = db.clientes;
+const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
 const jwtConfig = require("../config/jwt.config");
 
