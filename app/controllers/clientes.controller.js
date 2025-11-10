@@ -51,46 +51,37 @@ exports.register = async (req, res) => {
   }
 };
 
-// === Login cliente ===
-exports.login = async (req, res) => {
+exports.clientLogin = async (req, res) => {
   try {
     const { correo, password } = req.body;
 
     if (!correo || !password) {
-      return res.status(400).json({ message: 'Debe ingresar nombre de usuario/correo y contraseña.' });
+      return res.status(400).json({ message: "Correo y contraseña son requeridos" });
     }
 
-    // Buscar por correo o nombre
-    const cliente = await Clientes.findOne({
-      where: {
-        [db.Sequelize.Op.or]: [
-          { correo: correo },
-          { nombre: correo } // permite login con nombre
-        ]
-      }
-    });
+    const cliente = await Clientes.findOne({ where: { correo } });
 
     if (!cliente) {
-      return res.status(404).json({ message: 'Cliente no encontrado.' });
+      return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
+    // Verificar la contraseña
     const validPassword = await bcrypt.compare(password, cliente.password);
     if (!validPassword) {
-      return res.status(401).json({ message: 'Contraseña incorrecta.' });
+      return res.status(401).json({ message: "Contraseña incorrecta" });
     }
 
-    return res.status(200).json({
-      message: 'Inicio de sesión exitoso.',
-      cliente: {
-        id_cliente: cliente.id_cliente,
-        nombre: cliente.nombre,
-        apellido: cliente.apellido,
-        correo: cliente.correo,
-      },
-    });
+    // Generar token JWT
+    const token = jwt.sign(
+      { id: cliente.id_cliente, name: cliente.nombre },
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
+    );
+
+    res.status(200).json({ token, cliente: { id: cliente.id_cliente, name: cliente.nombre } });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Error al iniciar sesión.', error: err.message });
+    res.status(500).json({ message: "Error al autenticar el cliente" });
   }
 };
 
