@@ -1,53 +1,37 @@
-
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-import nodemailer from "nodemailer";
-import { fileURLToPath } from "url";
-import path from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const nodemailer = require("nodemailer");
+const path = require("path");
 const db = require("../models");
 const Factura = db.facturas;
-
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const QRCode = require("qrcode");
 
-export const generarFactura = async (req, res = null) => {
+const generarFactura = async (req, res = null) => {
   try {
     const { cliente, habitacion, serviciosSeleccionados, total, pago } = req.body;
 
     const numeroFactura = `FAC-${Date.now()}`;
     const fechaEmision = new Date().toLocaleString();
-
-    // Crear carpeta /facturas si no existe
     const facturasDir = path.join(__dirname, "../../facturas");
+
     if (!fs.existsSync(facturasDir)) fs.mkdirSync(facturasDir, { recursive: true });
 
     const facturaPath = path.join(facturasDir, `${numeroFactura}.pdf`);
     const qrData = `https://hoteldw.com/checkin/${numeroFactura}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
-    // === PDF ===
+    // 🧾 Crear PDF
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const writeStream = fs.createWriteStream(facturaPath);
     doc.pipe(writeStream);
 
-    // ======= FONDO Y ESTILO GENERAL =======
+    // ======= ENCABEZADO =======
     const beige = "#FFFDF5";
     const dorado = "#FFD700";
     const doradoOscuro = "#A67C00";
     const negro = "#000000";
-
     doc.rect(0, 0, 600, 800).fill(beige);
-
-    // ======= ENCABEZADO =======
-    doc
-      .rect(0, 0, 600, 90)
-      .fillColor(doradoOscuro)
-      .fill();
+    doc.rect(0, 0, 600, 90).fillColor(doradoOscuro).fill();
 
     const logoPath = path.join(__dirname, "../../public/assets/images/LosMolinos.jpeg");
     if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 25, { width: 60 });
@@ -59,42 +43,21 @@ export const generarFactura = async (req, res = null) => {
       .text("HOTEL OLYMPUS", 130, 30)
       .fontSize(10)
       .font("Helvetica")
-      .text("Confort y elegancia a su servicio", 130, 55);
-
-    doc
-      .fillColor(beige)
+      .text("Confort y elegancia a su servicio", 130, 55)
       .font("Helvetica-Oblique")
       .text("Tel: +502 5555-5555 | info@hoteldw.com", 130, 70);
 
-    // ======= SECCIÓN DATOS FACTURA =======
-    doc
-      .fillColor(doradoOscuro)
-      .fontSize(14)
-      .font("Helvetica-Bold")
-      .text("Factura de Reserva", 50, 110)
-      .strokeColor(dorado)
-      .lineWidth(1.5)
-      .moveTo(50, 130)
-      .lineTo(550, 130)
-      .stroke();
+    // ======= DATOS FACTURA =======
+    doc.fillColor(doradoOscuro).fontSize(14).font("Helvetica-Bold").text("Factura de Reserva", 50, 110);
+    doc.strokeColor(dorado).lineWidth(1.5).moveTo(50, 130).lineTo(550, 130).stroke();
 
-    doc
-      .fontSize(11)
-      .font("Helvetica")
-      .fillColor(negro)
+    doc.fontSize(11).font("Helvetica").fillColor(negro)
       .text(`Factura No.: ${numeroFactura}`, 50, 145)
       .text(`Fecha de emisión: ${fechaEmision}`, 50, 160);
 
-    // ======= DATOS DEL CLIENTE =======
-    doc
-      .fillColor(doradoOscuro)
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .text("Datos del Cliente", 50, 190)
-      .moveDown(0.3)
-      .font("Helvetica")
-      .fillColor(negro)
-      .fontSize(11)
+    // ======= CLIENTE =======
+    doc.fillColor(doradoOscuro).font("Helvetica-Bold").fontSize(13).text("Datos del Cliente", 50, 190);
+    doc.font("Helvetica").fillColor(negro).fontSize(11)
       .text(`Nombre: ${cliente?.nombre || ""} ${cliente?.apellido || ""}`)
       .text(`DPI: ${cliente?.dpi || ""}`)
       .text(`Teléfono: ${cliente?.telefono || ""}`)
@@ -103,76 +66,29 @@ export const generarFactura = async (req, res = null) => {
     // ======= CÁLCULOS =======
     const noches = cliente?.nochesEstancia || 1;
     const totalHabitacion = (habitacion?.precio || 0) * noches;
-    const totalServicios = serviciosSeleccionados?.reduce(
-      (acc, s) => acc + (s.precioFinal || s.precio || 0),
-      0
-    );
+    const totalServicios = serviciosSeleccionados?.reduce((acc, s) => acc + (s.precioFinal || s.precio || 0), 0);
     const totalFinal = totalHabitacion + totalServicios;
 
-    // ======= DETALLE HABITACIÓN =======
-    doc
-      .moveDown()
-      .fillColor(doradoOscuro)
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .text("Detalle de la Habitación", 50)
-      .moveDown(0.3)
-      .font("Helvetica")
-      .fillColor(negro)
-      .text(`Habitación: ${habitacion?.habitacion || ""}`)
+    // ======= HABITACIÓN =======
+    doc.moveDown().fillColor(doradoOscuro).font("Helvetica-Bold").fontSize(13).text("Detalle de la Habitación", 50);
+    doc.font("Helvetica").fillColor(negro).text(`Habitación: ${habitacion?.habitacion || ""}`)
       .text(`Nivel: ${habitacion?.nivel || ""}`)
       .text(`Precio total por noche: Q ${totalHabitacion.toFixed(2)}`);
 
-    // ======= SERVICIOS ADICIONALES =======
-    doc
-      .moveDown()
-      .fillColor(doradoOscuro)
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .text("Servicios Adicionales", 50)
-      .moveDown(0.5);
-
+    // ======= SERVICIOS =======
+    doc.moveDown().fillColor(doradoOscuro).font("Helvetica-Bold").fontSize(13).text("Servicios Adicionales", 50);
     if (serviciosSeleccionados?.length > 0) {
       doc.font("Helvetica").fillColor(negro).fontSize(11);
-      serviciosSeleccionados.forEach((s) => {
-        doc.text(`• ${s.nombre} — Q ${s.precioFinal || s.precio}`);
-      });
-
-      doc
-        .moveDown(0.5)
-        .font("Helvetica-Bold")
-        .fillColor(doradoOscuro)
-        .text(`Total pagado de servicios: Q ${totalServicios.toFixed(2)}`);
+      serviciosSeleccionados.forEach((s) => doc.text(`• ${s.nombre} — Q ${s.precioFinal || s.precio}`));
     } else {
-      doc
-        .font("Helvetica")
-        .fillColor(negro)
-        .fontSize(11)
-        .text("Sin servicios adicionales seleccionados.")
-        .moveDown(0.5)
-        .font("Helvetica-Bold")
-        .fillColor(doradoOscuro)
-        .text("Total pagado de servicios: Q 0.00");
+      doc.font("Helvetica").fillColor(negro).fontSize(11).text("Sin servicios adicionales seleccionados.");
     }
 
-    // ======= RESUMEN DE PAGO =======
-    doc
-      .moveDown()
-      .font("Helvetica-Bold")
-      .fillColor(doradoOscuro)
-      .fontSize(13)
+    // ======= TOTAL =======
+    doc.moveDown().font("Helvetica-Bold").fillColor(doradoOscuro).fontSize(13)
       .text("Resumen del Pago", 50)
-      .strokeColor(dorado)
-      .lineWidth(1)
-      .moveTo(50, doc.y + 5)
-      .lineTo(550, doc.y + 5)
-      .stroke()
-      .moveDown(1);
-
-    doc
-      .font("Helvetica")
-      .fillColor(negro)
-      .fontSize(12)
+      .strokeColor(dorado).moveTo(50, doc.y + 5).lineTo(550, doc.y + 5).stroke()
+      .font("Helvetica").fillColor(negro).fontSize(12)
       .text(`Método de pago: ${pago || "PayPal"}`)
       .text(`Total pagado: Q ${totalFinal.toFixed(2)}`);
 
@@ -180,33 +96,17 @@ export const generarFactura = async (req, res = null) => {
     const qrX = 420;
     const qrY = doc.y - 10;
     doc.image(qrImage, qrX, qrY, { width: 100 });
-    doc
-      .fontSize(9)
-      .fillColor(doradoOscuro)
-      .text("Escanee para confirmar Check-in", qrX, qrY + 105, { width: 120 });
-
-    // ======= PIE =======
-    doc
-      .moveDown(3)
-      .fontSize(10)
-      .fillColor(doradoOscuro)
-      .font("Helvetica-Oblique")
-      .text(
-        "Gracias por su preferencia — Olympus Hotel, Salamá, Baja Verapaz.",
-        50,
-        750,
-        { align: "center", width: 500 }
-      );
+    doc.fontSize(9).fillColor(doradoOscuro).text("Escanee para confirmar Check-in", qrX, qrY + 105, { width: 120 });
 
     doc.end();
 
-    // === Cuando termina el PDF ===
+    // ======= Esperar finalización =======
     writeStream.on("finish", async () => {
       const fileUrl = `http://localhost:8080/facturas/${numeroFactura}.pdf`;
 
-      // Enviar por correo
-      if (cliente?.email) {
-        try {
+      try {
+        // 📧 Envío de correo
+        if (cliente?.email) {
           const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -225,45 +125,39 @@ export const generarFactura = async (req, res = null) => {
 
           await transporter.sendMail(mailOptions);
           console.log(`✅ Factura enviada a ${cliente.email}`);
-        } catch (mailError) {
-          console.error("❌ Error enviando correo:", mailError);
         }
-      }
 
-      // Guardar registro en la BD
-      try {
+        // 🗂️ Guardar factura en BD
         await Factura.create({
           numero_factura: numeroFactura,
           nombre_cliente: `${cliente?.nombre || ""} ${cliente?.apellido || ""}`.trim(),
           correo_cliente: cliente?.email || "",
           total: Number(totalFinal) || 0,
           url_pdf: fileUrl,
-          metodo_pago: "PayPal",
+          metodo_pago: pago || "PayPal",
         });
         console.log("🗂️ Factura registrada en BD:", numeroFactura);
-      } catch (e) {
-        console.error("Error guardando factura en BD:", e);
-      }
 
-      // ✅ Si se llama vía HTTP responde normalmente
-      if (res) {
-        return res.json({ ok: true, url: fileUrl });
-      } else {
-        console.log(`📤 Factura generada y enviada a ${cliente?.email || "—"} (${numeroFactura})`);
+        if (res) {
+          return res.json({
+            ok: true,
+            url: fileUrl,
+            mensaje: "Factura generada y enviada correctamente",
+          });
+        }
+      } catch (e) {
+        console.error("❌ Error durante el proceso de factura:", e);
+        if (res) return res.status(500).json({ ok: false, error: e.message });
       }
     });
   } catch (error) {
-    console.error("Error generando factura:", error);
-    if (res) {
-      return res.status(500).json({ ok: false, error: "Error generando factura" });
-    } else {
-      throw error;
-    }
+    console.error("❌ Error generando factura:", error);
+    if (res) return res.status(500).json({ ok: false, error: "Error generando factura" });
   }
 };
 
 
-export const listarFacturas = async (req, res) => {
+const listarFacturas = async (req, res) => {
   try {
     const facturas = await Factura.findAll({
       order: [["fecha_emision", "DESC"]],
@@ -285,7 +179,4 @@ export const listarFacturas = async (req, res) => {
   }
 };
 
-
-
-
-
+module.exports = { generarFactura, listarFacturas };
