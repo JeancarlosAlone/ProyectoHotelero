@@ -2,7 +2,7 @@
 const db = require('../models');
 const Clientes = db.clientes;
 const bcrypt = require('bcrypt');
-const jwt = require("jsonwebtoken");
+const jwtConfig = require("../config/jwt.config");
 
 // Función para generar un ID único tipo CL0001
 async function generarIdCliente() {
